@@ -19,7 +19,7 @@ except LookupError:
 # Load the CSV file
 @st.cache_data
 def load_data():
-    return pd.read_csv("reach higher curriculum all units - MASTER - reach higher curriculum all units.csv")
+    return pd.read_csv("rhallunits.csv")
 
 df = load_data()
 
