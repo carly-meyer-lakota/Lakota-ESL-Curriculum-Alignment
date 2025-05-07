@@ -20,7 +20,7 @@ except LookupError:
 @st.cache_data
 def load_data():
     df = pd.read_csv("rhallunits.csv")
-    df.columns = df.columns.str.strip()  # Remove any accidental spaces in column names
+    df.columns = df.columns.str.strip()  # Clean column names
     return df
 
 df = load_data()
@@ -61,7 +61,7 @@ def topic_search(terms):
     top_matches = df.sort_values(by='total_score', ascending=False).head(5)
     return top_matches[['RH Level', 'Unit', 'Part', 'Unit Name', 'Vocabulary Words', 'total_score']]
 
-# Skill search using fuzzy matching
+# Skill search using fuzzy matching with error handling
 def skill_search(term):
     skill_columns = ['Language Skill', 'Thinking Map Skill', 'Reading Skill', 'Grammar Skill', 'Project', 'Phonics Skill']
     matches = []
@@ -80,8 +80,11 @@ def skill_search(term):
                     'Score': score
                 })
 
-    top_matches = pd.DataFrame(matches).sort_values(by='Score', ascending=False).head(5)
-    return top_matches[['RH Level', 'Unit', 'Part', 'Unit Name', 'Matched Skill Column', 'Matched Skill Value']]
+    if matches:
+        top_matches = pd.DataFrame(matches).sort_values(by='Score', ascending=False).head(5)
+        return top_matches[['RH Level', 'Unit', 'Part', 'Unit Name', 'Matched Skill Column', 'Matched Skill Value']]
+    else:
+        return pd.DataFrame(columns=['RH Level', 'Unit', 'Part', 'Unit Name', 'Matched Skill Column', 'Matched Skill Value'])
 
 # Genre search using partial fuzzy match
 def genre_search(term):
