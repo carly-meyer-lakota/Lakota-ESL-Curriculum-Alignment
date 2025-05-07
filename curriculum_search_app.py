@@ -5,9 +5,16 @@ from nltk.corpus import wordnet
 from rapidfuzz import fuzz
 from sentence_transformers import SentenceTransformer, util
 
-# Download WordNet data
-nltk.download('wordnet')
-nltk.download('omw-1.4')
+# Automatically download WordNet data if not already present
+try:
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('wordnet')
+
+try:
+    nltk.data.find('corpora/omw-1.4')
+except LookupError:
+    nltk.download('omw-1.4')
 
 # Load the CSV file
 @st.cache_data
