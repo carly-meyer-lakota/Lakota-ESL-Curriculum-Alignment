@@ -1,6 +1,13 @@
 import streamlit as st
 import pandas as pd
+import nltk
+from nltk.corpus import wordnet
 from rapidfuzz import fuzz
+from sentence_transformers import SentenceTransformer, util
+
+# Download WordNet data
+nltk.download('wordnet')
+nltk.download('omw-1.4')
 
 # Load the CSV file
 @st.cache_data
@@ -9,30 +16,41 @@ def load_data():
 
 df = load_data()
 
-# Define keyword expansion for topic search
-def expand_keywords(term):
-    keyword_map = {
-        'energy': ['energy', 'power', 'electricity', 'force', 'motion', 'fuel', 'heat'],
-        'weather': ['weather', 'climate', 'storm', 'rain', 'temperature', 'wind'],
-        'community': ['community', 'neighborhood', 'citizen', 'volunteer', 'help'],
-        # Add more topic expansions as needed
-    }
-    return keyword_map.get(term.lower(), [term])
+# Load sentence transformer model
+@st.cache_resource
+def load_model():
+    return SentenceTransformer('all-MiniLM-L6-v2')
 
-# Define topic search with token matching and fuzzy tiebreaker
-def topic_search(term):
-    expanded_terms = expand_keywords(term)
+model = load_model()
+
+# Expand keywords using WordNet
+def expand_keywords(term):
+    synonyms = set()
+    for syn in wordnet.synsets(term):
+        for lemma in syn.lemmas():
+            synonyms.add(lemma.name().replace('_', ' '))
+    return list(synonyms) + [term]
+
+# Topic search with token match, fuzzy match, synonym expansion, and semantic similarity
+def topic_search(terms):
+    all_terms = []
+    for term in terms.split(','):
+        all_terms.extend(expand_keywords(term.strip()))
+    all_terms = list(set(all_terms))
+
     df['combined_words'] = df['Vocabulary Words'].fillna('') + ' ' + df['Related Words'].fillna('')
-    
-    def compute_overlap_and_fuzzy(text):
+
+    def compute_scores(text):
         tokens = text.lower().split()
-        overlap = sum(1 for t in expanded_terms if t in tokens)
-        fuzzy_score = max(fuzz.token_set_ratio(t.lower(), text.lower()) for t in expanded_terms)
-        return pd.Series([overlap, fuzzy_score])
-    
-    df[['overlap_count', 'fuzzy_score']] = df['combined_words'].apply(compute_overlap_and_fuzzy)
-    top_matches = df.sort_values(by=['overlap_count', 'fuzzy_score'], ascending=False).head(5)
-    return top_matches[['RH Level', 'Unit', 'Part ', 'Unit Name', 'Vocabulary Words']]
+        overlap = sum(1 for t in all_terms if t.lower() in tokens)
+        fuzzy_score = max(fuzz.token_set_ratio(t.lower(), text.lower()) for t in all_terms)
+        embedding_score = util.cos_sim(model.encode(' '.join(all_terms)), model.encode(text)).item()
+        return pd.Series([overlap, fuzzy_score, embedding_score])
+
+    df[['overlap_count', 'fuzzy_score', 'embedding_score']] = df['combined_words'].apply(compute_scores)
+    df['total_score'] = df['overlap_count'] * 2 + df['fuzzy_score'] + df['embedding_score'] * 100
+    top_matches = df.sort_values(by='total_score', ascending=False).head(5)
+    return top_matches[['RH Level', 'Unit', 'Part ', 'Unit Name', 'Vocabulary Words', 'total_score']]
 
 # Skill search using fuzzy matching
 def skill_search(term):
@@ -67,7 +85,7 @@ def genre_search(term):
 st.title("📚 Reach Higher Curriculum Search Tool")
 
 search_type = st.selectbox("What would you like to search by?", ["Topic", "Skill", "Genre"])
-search_term = st.text_input("Enter your search term:")
+search_term = st.text_input("Enter your search term(s):")
 
 if st.button("Search") and search_term:
     if search_type == "Topic":
