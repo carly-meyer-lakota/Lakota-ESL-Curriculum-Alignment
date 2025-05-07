@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from rapidfuzz import fuzz, process
+from rapidfuzz import fuzz
 
 # Load the CSV file
 @st.cache_data
@@ -9,10 +9,23 @@ def load_data():
 
 df = load_data()
 
+# Define keyword expansion for topic search
+def expand_keywords(term):
+    keyword_map = {
+        'energy': ['energy', 'power', 'electricity', 'force', 'motion', 'fuel', 'heat'],
+        'weather': ['weather', 'climate', 'storm', 'rain', 'temperature', 'wind'],
+        'community': ['community', 'neighborhood', 'citizen', 'volunteer', 'help'],
+        # Add more topic expansions as needed
+    }
+    return keyword_map.get(term.lower(), [term])
+
 # Define search functions
 def topic_search(term):
+    expanded_terms = expand_keywords(term)
     df['combined_words'] = df['Vocabulary Words'].fillna('') + ' ' + df['Related Words'].fillna('')
-    df['relevance'] = df['combined_words'].apply(lambda x: fuzz.token_set_ratio(term.lower(), x.lower()))
+    df['relevance'] = df['combined_words'].apply(
+        lambda x: max(fuzz.token_set_ratio(t.lower(), x.lower()) for t in expanded_terms)
+    )
     top_matches = df.sort_values(by='relevance', ascending=False).head(5)
     return top_matches[['RH Level', 'Unit', 'Part ', 'Unit Name', 'Vocabulary Words']]
 
