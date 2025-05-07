@@ -89,7 +89,7 @@ def genre_search(term):
     return top_matches[['RH Level', 'Unit', 'Part ', 'Unit Name', 'Genres']]
 
 # Streamlit UI
-st.title("📚 Reach Higher Curriculum Search Tool")
+st.title("📚 ESL Curriculum Search Tool")
 
 search_type = st.selectbox("What would you like to search by?", ["Topic", "Skill", "Genre"])
 search_term = st.text_input("Enter your search term(s):")
