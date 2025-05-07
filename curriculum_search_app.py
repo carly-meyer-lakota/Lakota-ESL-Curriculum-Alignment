@@ -19,7 +19,9 @@ except LookupError:
 # Load the CSV file
 @st.cache_data
 def load_data():
-    return pd.read_csv("rhallunits.csv")
+    df = pd.read_csv("rhallunits.csv")
+    df.columns = df.columns.str.strip()  # Remove any accidental spaces in column names
+    return df
 
 df = load_data()
 
@@ -57,7 +59,7 @@ def topic_search(terms):
     df[['overlap_count', 'fuzzy_score', 'embedding_score']] = df['combined_words'].apply(compute_scores)
     df['total_score'] = df['overlap_count'] * 2 + df['fuzzy_score'] + df['embedding_score'] * 100
     top_matches = df.sort_values(by='total_score', ascending=False).head(5)
-    return top_matches[['RH Level', 'Unit', 'Part ', 'Unit Name', 'Vocabulary Words', 'total_score']]
+    return top_matches[['RH Level', 'Unit', 'Part', 'Unit Name', 'Vocabulary Words', 'total_score']]
 
 # Skill search using fuzzy matching
 def skill_search(term):
@@ -71,7 +73,7 @@ def skill_search(term):
                 matches.append({
                     'RH Level': df.at[idx, 'RH Level'],
                     'Unit': df.at[idx, 'Unit'],
-                    'Part ': df.at[idx, 'Part '],
+                    'Part': df.at[idx, 'Part'],
                     'Unit Name': df.at[idx, 'Unit Name'],
                     'Matched Skill Column': col,
                     'Matched Skill Value': val,
@@ -79,17 +81,17 @@ def skill_search(term):
                 })
 
     top_matches = pd.DataFrame(matches).sort_values(by='Score', ascending=False).head(5)
-    return top_matches[['RH Level', 'Unit', 'Part ', 'Unit Name', 'Matched Skill Column', 'Matched Skill Value']]
+    return top_matches[['RH Level', 'Unit', 'Part', 'Unit Name', 'Matched Skill Column', 'Matched Skill Value']]
 
 # Genre search using partial fuzzy match
 def genre_search(term):
     df['Genres'] = df['Genres'].fillna('')
     df['relevance'] = df['Genres'].apply(lambda x: fuzz.partial_ratio(term.lower(), x.lower()))
     top_matches = df[df['relevance'] > 60].sort_values(by='relevance', ascending=False).head(5)
-    return top_matches[['RH Level', 'Unit', 'Part ', 'Unit Name', 'Genres']]
+    return top_matches[['RH Level', 'Unit', 'Part', 'Unit Name', 'Genres']]
 
 # Streamlit UI
-st.title("📚 ESL Curriculum Search Tool")
+st.title("📚 Reach Higher Curriculum Search Tool")
 
 search_type = st.selectbox("What would you like to search by?", ["Topic", "Skill", "Genre"])
 search_term = st.text_input("Enter your search term(s):")
